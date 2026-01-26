@@ -230,7 +230,7 @@ export default function GearMindsAttendance() {
     </div>
   );
 }
-
+//login form component updated
 function LoginForm({ onLogin }) {
   const [initializing, setInitializing] = useState(false);
   
