@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Archive, CheckCircle, Upload, Mail, Sparkles } from 'lucide-react';
 
+//new imports
+import { 
+  loadAllData, 
+  addStudent, 
+  updateStudent,
+  addClass,
+  updateClass,
+  saveAttendance,
+  deleteAttendance 
+} from './databaseFunctions';
+
 // Mock data storage
 const initialData = {
   users: [
