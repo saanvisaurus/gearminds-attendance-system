@@ -12,29 +12,6 @@ import {
   deleteAttendance 
 } from './databaseFunctions';
 
-// Mock data storage
-const initialData = {
-  users: [
-    { id: 1, email: 'admin@gearminds.com', password: 'admin123', role: 'Admin' }
-  ],
-  students: [
-    { id: 1, studentId: 'GM001', fullName: 'Alex Johnson', email: 'alex@example.com', phone: '555-0101', status: 'Active' },
-    { id: 2, studentId: 'GM002', fullName: 'Sarah Williams', email: 'sarah@example.com', phone: '555-0102', status: 'Active' },
-    { id: 3, studentId: 'GM003', fullName: 'Michael Chen', email: 'michael@example.com', phone: '555-0103', status: 'Active' },
-    { id: 4, studentId: 'GM004', fullName: 'Emma Davis', email: 'emma@example.com', phone: '555-0104', status: 'Active' }
-  ],
-  classes: [
-    { id: 1, name: 'Elementary Robotics', description: 'Block coding and robots', startDate: '2026-01-15', endDate: '2026-05-30', status: 'Active', maxCapacity: 12 },
-    { id: 2, name: 'Middle School Python', description: 'Introduction to Python', startDate: '2026-01-15', endDate: '2026-05-30', status: 'Active', maxCapacity: 10 }
-  ],
-  enrollments: [
-    { id: 1, studentId: 1, classId: 1 },
-    { id: 2, studentId: 2, classId: 1 },
-    { id: 3, studentId: 3, classId: 1 },
-    { id: 4, studentId: 4, classId: 2 }
-  ],
-  attendance: []
-};
 
 export default function GearMindsAttendance() {
   const [currentUser, setCurrentUser] = useState(null);
