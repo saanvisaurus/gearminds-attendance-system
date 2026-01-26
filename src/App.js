@@ -12,20 +12,48 @@ import {
   deleteAttendance 
 } from './databaseFunctions';
 
+//replaced state functions
 
 export default function GearMindsAttendance() {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState({
+    users: [],
+    students: [],
+    classes: [],
+    enrollments: [],
+    attendance: []
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showClassModal, setShowClassModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [editingClass, setEditingClass] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Load all data from Firebase when component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const allData = await loadAllData();
+        setData(allData);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setError('Failed to load data. Please refresh the page.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []); // Empty dependency array means this runs once on mount
 
   const handleLogin = (email, password) => {
-    const user = initialData.users.find(u => u.email === email && u.password === password);
+    const user = data.users.find(u => u.email === email && u.password === password);
     if (user) {
       setCurrentUser(user);
       return true;
