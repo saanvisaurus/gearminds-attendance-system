@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Archive, CheckCircle, Upload, Mail, Sparkles } from 'lucide-react';
 
-//new imports
+// Firebase imports
 import { 
   loadAllData, 
   addStudent, 
@@ -12,8 +12,6 @@ import {
   deleteAttendance 
 } from './databaseFunctions';
 import { initializeFirebaseData } from './initializeFirebase';
-
-//replaced state functions
 
 export default function GearMindsAttendance() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -51,7 +49,7 @@ export default function GearMindsAttendance() {
     };
 
     fetchData();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   const handleLogin = (email, password) => {
     const user = data.users.find(u => u.email === email && u.password === password);
@@ -120,6 +118,38 @@ export default function GearMindsAttendance() {
     return suggestions.sort((a, b) => b.totalAbsences - a.totalAbsences);
   };
 
+  // Show loading screen while fetching data
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-xl font-semibold text-gray-800">Loading GearMinds...</p>
+          <p className="text-sm text-gray-600 mt-2">Please wait</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if data failed to load
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Connection Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-gradient-to-r from-orange-500 to-blue-600 text-white px-6 py-2 rounded-lg hover:from-orange-600 hover:to-blue-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Login Component
   if (!currentUser) {
     return <LoginForm onLogin={handleLogin} />;
@@ -144,16 +174,27 @@ export default function GearMindsAttendance() {
         <StudentModal
           student={editingStudent}
           onClose={() => { setShowStudentModal(false); setEditingStudent(null); }}
-          onSave={(student) => {
-            setData(prev => {
+          onSave={async (student) => {
+            try {
               if (editingStudent) {
-                return { ...prev, students: prev.students.map(s => s.id === editingStudent.id ? { ...student, id: editingStudent.id } : s) };
+                await updateStudent(editingStudent.id, student);
+                setData(prev => ({
+                  ...prev,
+                  students: prev.students.map(s => s.id === editingStudent.id ? { ...student, id: editingStudent.id } : s)
+                }));
               } else {
-                return { ...prev, students: [...prev.students, { ...student, id: Date.now() }] };
+                const newId = await addStudent(student);
+                setData(prev => ({
+                  ...prev,
+                  students: [...prev.students, { ...student, id: newId }]
+                }));
               }
-            });
-            setShowStudentModal(false);
-            setEditingStudent(null);
+              setShowStudentModal(false);
+              setEditingStudent(null);
+            } catch (error) {
+              console.error('Error saving student:', error);
+              alert('Failed to save student. Please try again.');
+            }
           }}
         />
       )}
@@ -162,16 +203,27 @@ export default function GearMindsAttendance() {
         <ClassModal
           classData={editingClass}
           onClose={() => { setShowClassModal(false); setEditingClass(null); }}
-          onSave={(classData) => {
-            setData(prev => {
+          onSave={async (classData) => {
+            try {
               if (editingClass) {
-                return { ...prev, classes: prev.classes.map(c => c.id === editingClass.id ? { ...classData, id: editingClass.id } : c) };
+                await updateClass(editingClass.id, classData);
+                setData(prev => ({
+                  ...prev,
+                  classes: prev.classes.map(c => c.id === editingClass.id ? { ...classData, id: editingClass.id } : c)
+                }));
               } else {
-                return { ...prev, classes: [...prev.classes, { ...classData, id: Date.now() }] };
+                const newId = await addClass(classData);
+                setData(prev => ({
+                  ...prev,
+                  classes: [...prev.classes, { ...classData, id: newId }]
+                }));
               }
-            });
-            setShowClassModal(false);
-            setEditingClass(null);
+              setShowClassModal(false);
+              setEditingClass(null);
+            } catch (error) {
+              console.error('Error saving class:', error);
+              alert('Failed to save class. Please try again.');
+            }
           }}
         />
       )}
@@ -180,8 +232,30 @@ export default function GearMindsAttendance() {
 }
 
 function LoginForm({ onLogin }) {
+  const [initializing, setInitializing] = useState(false);
+  
   const quickLogin = () => {
     onLogin('admin@gearminds.com', 'admin123');
+  };
+
+  const handleInitialize = async () => {
+    if (!window.confirm('This will add sample data to your database. Continue?')) {
+      return;
+    }
+    
+    setInitializing(true);
+    try {
+      const success = await initializeFirebaseData();
+      if (success) {
+        alert('✅ Firebase initialized successfully! Please refresh the page.');
+        window.location.reload();
+      } else {
+        alert('ℹ️ Data already exists in Firebase. You can login now.');
+      }
+    } catch (error) {
+      alert('❌ Failed to initialize: ' + error.message);
+    }
+    setInitializing(false);
   };
 
   return (
@@ -222,10 +296,40 @@ function LoginForm({ onLogin }) {
           >
             Sign In
           </button>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">First time setup</span>
+            </div>
+          </div>
+
+          <button 
+            type="button"
+            onClick={handleInitialize}
+            disabled={initializing}
+            className="w-full bg-purple-500 text-white py-3 rounded-lg font-medium hover:bg-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {initializing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Initializing Database...
+              </>
+            ) : (
+              <>
+                <span>🔧</span>
+                Initialize Firebase Database
+              </>
+            )}
+          </button>
         </div>
         
         <div className="mt-4 text-center">
-          <p className="text-sm text-gray-600">Click Sign In to access the system</p>
+          <p className="text-sm text-gray-600">
+            First time? Click "Initialize" to add sample data
+          </p>
         </div>
       </div>
     </div>
@@ -340,11 +444,9 @@ function MakeupClassesTab({ data, getMakeupSuggestions }) {
   };
 
   const generateAISuggestedTimes = () => {
-    // AI suggests optimal times based on current date
     const today = new Date();
     const suggestedTimes = [];
     
-    // Suggest next 3 Saturdays
     for (let i = 1; i <= 3; i++) {
       const nextSaturday = new Date(today);
       nextSaturday.setDate(today.getDate() + ((6 - today.getDay() + 7) % 7) + (7 * (i - 1)));
@@ -380,7 +482,6 @@ function MakeupClassesTab({ data, getMakeupSuggestions }) {
     const timesToUse = useCustomTimes ? customTimes : generateAISuggestedTimes();
     const formattedTimes = formatTimeSlots(timesToUse);
     
-    // Simulate AI generation
     setTimeout(() => {
       const studentNames = selectedSuggestions.map(s => s.student.fullName).join(', ');
       const totalAbsences = selectedSuggestions.reduce((sum, s) => sum + s.totalAbsences, 0);
@@ -594,791 +695,4 @@ contactus@gearmindsacademy.com
                     const emails = selectedSuggestions.map(s => s.student.email).join(',');
                     window.location.href = `mailto:${emails}?subject=Makeup Class Opportunity - GearMinds Academy&body=${encodeURIComponent(generatedEmail)}`;
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-blue-600 text-white py-2 rounded-lg hover:from-orange-600 hover:to-blue-700"
-                >
-                  <Mail className="w-4 h-4" />
-                  Send Email
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-16 text-gray-400">
-              <Mail className="w-16 h-16 mx-auto mb-3" />
-              <p>Select students and click "Generate Email"</p>
-              <p className="text-sm mt-2">AI will craft a personalized makeup class email</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Header({ user, onLogout }) {
-  return (
-    <header className="bg-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-r from-orange-500 to-blue-600 text-white text-xl font-bold py-2 px-4 rounded-lg">
-            GearMinds
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Attendance System</h1>
-            <p className="text-sm text-gray-600">Welcome, {user.email}</p>
-          </div>
-        </div>
-        
-        <button onClick={onLogout} className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
-      </div>
-    </header>
-  );
-}
-
-function Navigation({ activeTab, setActiveTab }) {
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'students', label: 'Students', icon: Users },
-    { id: 'classes', label: 'Classes', icon: BookOpen },
-    { id: 'attendance', label: 'Attendance', icon: Calendar },
-    { id: 'makeup', label: 'AI Makeup Classes', icon: Sparkles },
-    { id: 'reports', label: 'Reports', icon: BarChart3 }
-  ];
-
-  return (
-    <div className="bg-white rounded-xl shadow-md p-2 mb-6">
-      <nav className="flex gap-2">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-              activeTab === tab.id
-                ? 'bg-gradient-to-r from-orange-500 to-blue-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-    </div>
-  );
-}
-
-function Dashboard({ data, setActiveTab, setShowStudentModal, setShowClassModal, setEditingStudent, setEditingClass }) {
-  const today = new Date().toISOString().split('T')[0];
-  const activeStudents = data.students.filter(s => s.status === 'Active').length;
-  const activeClasses = data.classes.filter(c => c.status === 'Active').length;
-  const todayAttendance = data.attendance.filter(a => a.date === today);
-  const presentToday = todayAttendance.filter(a => a.status === 'Present').length;
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-100 text-sm">Active Students</p>
-              <p className="text-3xl font-bold mt-1">{activeStudents}</p>
-            </div>
-            <Users className="w-12 h-12 text-orange-200" />
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">Active Classes</p>
-              <p className="text-3xl font-bold mt-1">{activeClasses}</p>
-            </div>
-            <BookOpen className="w-12 h-12 text-blue-200" />
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Present Today</p>
-              <p className="text-3xl font-bold mt-1">{presentToday}</p>
-            </div>
-            <CheckCircle className="w-12 h-12 text-green-200" />
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm">Total Records</p>
-              <p className="text-3xl font-bold mt-1">{data.attendance.length}</p>
-            </div>
-            <BarChart3 className="w-12 h-12 text-purple-200" />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => setActiveTab('attendance')} className="flex items-center justify-center gap-2 bg-orange-50 text-orange-600 py-3 px-4 rounded-lg hover:bg-orange-100">
-            <Calendar className="w-5 h-5" />
-            <span className="font-medium">Take Attendance</span>
-          </button>
-          <button onClick={() => { setShowStudentModal(true); setEditingStudent(null); }} className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-3 px-4 rounded-lg hover:bg-blue-100">
-            <Plus className="w-5 h-5" />
-            <span className="font-medium">Add Student</span>
-          </button>
-          <button onClick={() => { setShowClassModal(true); setEditingClass(null); }} className="flex items-center justify-center gap-2 bg-green-50 text-green-600 py-3 px-4 rounded-lg hover:bg-green-100">
-            <Plus className="w-5 h-5" />
-            <span className="font-medium">Create Class</span>
-          </button>
-          <button onClick={() => setActiveTab('reports')} className="flex items-center justify-center gap-2 bg-purple-50 text-purple-600 py-3 px-4 rounded-lg hover:bg-purple-100">
-            <BarChart3 className="w-5 h-5" />
-            <span className="font-medium">View Reports</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AttendanceTab({ data, setData, selectedClass, setSelectedClass, getClassDates }) {
-  const [makeupDates, setMakeupDates] = useState([]);
-  const [showMakeupModal, setShowMakeupModal] = useState(false);
-  const [newMakeupDate, setNewMakeupDate] = useState('');
-  
-  const activeClasses = data.classes.filter(c => c.status === 'Active');
-  const enrolledStudents = selectedClass 
-    ? data.enrollments
-        .filter(e => e.classId === selectedClass.id)
-        .map(e => data.students.find(s => s.id === e.studentId))
-        .filter(s => s && s.status === 'Active')
-    : [];
-  
-  const dates = selectedClass ? getClassDates(selectedClass) : [];
-  const allDates = [...dates, ...makeupDates].sort();
-
-  const getAttendanceStatus = (studentId, date) => {
-    const record = data.attendance.find(a => 
-      a.studentId === studentId && 
-      a.classId === selectedClass.id && 
-      a.date === date
-    );
-    return record?.status || '';
-  };
-
-  const handleStatusClick = (studentId, date, currentStatus) => {
-    const statuses = ['', 'P', 'A', 'L', 'E']; // Empty, Present, Absent, Late, Excused
-    const currentIndex = statuses.indexOf(currentStatus);
-    const nextStatus = statuses[(currentIndex + 1) % statuses.length];
-    
-    setData(prev => {
-      const existingIndex = prev.attendance.findIndex(a => 
-        a.studentId === studentId && 
-        a.classId === selectedClass.id && 
-        a.date === date
-      );
-
-      if (nextStatus === '') {
-        // Remove the record
-        return {
-          ...prev,
-          attendance: prev.attendance.filter((_, i) => i !== existingIndex)
-        };
-      } else if (existingIndex >= 0) {
-        // Update existing record
-        const newAttendance = [...prev.attendance];
-        newAttendance[existingIndex] = { ...newAttendance[existingIndex], status: nextStatus };
-        return { ...prev, attendance: newAttendance };
-      } else {
-        // Create new record
-        return {
-          ...prev,
-          attendance: [...prev.attendance, {
-            id: Date.now() + Math.random(),
-            studentId,
-            classId: selectedClass.id,
-            date,
-            status: nextStatus,
-            notes: ''
-          }]
-        };
-      }
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'P': return 'bg-green-100 text-green-800 border-green-300';
-      case 'A': return 'bg-red-100 text-red-800 border-red-300';
-      case 'L': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'E': return 'bg-blue-100 text-blue-800 border-blue-300';
-      default: return 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50';
-    }
-  };
-
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  };
-
-  const isMakeupDate = (dateStr) => makeupDates.includes(dateStr);
-
-  const addMakeupDate = () => {
-    if (newMakeupDate && !allDates.includes(newMakeupDate)) {
-      setMakeupDates([...makeupDates, newMakeupDate].sort());
-      setNewMakeupDate('');
-      setShowMakeupModal(false);
-    }
-  };
-
-  const removeMakeupDate = (dateStr) => {
-    setMakeupDates(makeupDates.filter(d => d !== dateStr));
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Attendance Sheet</h2>
-        <div className="flex gap-3 items-center">
-          {selectedClass && (
-            <button
-              onClick={() => setShowMakeupModal(true)}
-              className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
-            >
-              <Plus className="w-4 h-4" />
-              Add Makeup Date
-            </button>
-          )}
-          <div className="w-64">
-            <select
-              value={selectedClass?.id || ''}
-              onChange={(e) => setSelectedClass(activeClasses.find(c => c.id === parseInt(e.target.value)))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-            >
-              <option value="">Select a class...</option>
-              {activeClasses.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {selectedClass ? (
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="p-4 bg-gradient-to-r from-orange-500 to-blue-600 text-white">
-            <h3 className="text-lg font-bold">{selectedClass.name}</h3>
-            <p className="text-sm text-orange-100">Click cells to cycle: Empty → P (Present) → A (Absent) → L (Late) → E (Excused)</p>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b-2 border-gray-300">
-                  <th className="sticky left-0 bg-gray-50 z-10 px-4 py-3 text-left text-sm font-bold text-gray-700 border-r-2 border-gray-300 min-w-[200px]">
-                    Student Name
-                  </th>
-                  {allDates.map(date => (
-                    <th key={date} className={`px-3 py-3 text-center text-xs font-semibold border-r border-gray-200 min-w-[60px] ${isMakeupDate(date) ? 'bg-purple-100 text-purple-700' : 'text-gray-700'}`}>
-                      <div>{formatDate(date)}</div>
-                      {isMakeupDate(date) && (
-                        <div className="text-[10px] font-bold mt-1">MAKEUP</div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {enrolledStudents.map((student, idx) => (
-                  <tr key={student.id} className={`border-b border-gray-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    <td className="sticky left-0 z-10 px-4 py-3 text-sm font-medium text-gray-900 border-r-2 border-gray-300 bg-inherit">
-                      <div>
-                        <div>{student.fullName}</div>
-                        <div className="text-xs text-gray-500">{student.studentId}</div>
-                      </div>
-                    </td>
-                    {allDates.map(date => {
-                      const status = getAttendanceStatus(student.id, date);
-                      return (
-                        <td key={date} className={`border-r border-gray-200 p-1 ${isMakeupDate(date) ? 'bg-purple-50' : ''}`}>
-                          <button
-                            onClick={() => handleStatusClick(student.id, date, status)}
-                            className={`w-full h-10 rounded border-2 font-bold text-sm transition-all ${getStatusColor(status)}`}
-                          >
-                            {status}
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="p-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-green-100 border-2 border-green-300 rounded flex items-center justify-center text-green-800 font-bold text-xs">P</div>
-                <span className="text-gray-700">Present</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-red-100 border-2 border-red-300 rounded flex items-center justify-center text-red-800 font-bold text-xs">A</div>
-                <span className="text-gray-700">Absent</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-yellow-100 border-2 border-yellow-300 rounded flex items-center justify-center text-yellow-800 font-bold text-xs">L</div>
-                <span className="text-gray-700">Late</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-blue-100 border-2 border-blue-300 rounded flex items-center justify-center text-blue-800 font-bold text-xs">E</div>
-                <span className="text-gray-700">Excused</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-md p-12 text-center">
-          <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <p className="text-gray-500">Select a class to view the attendance sheet</p>
-        </div>
-      )}
-
-      {showMakeupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Add Makeup Class Date</h3>
-            
-            {makeupDates.length > 0 && (
-              <div className="mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Current Makeup Dates:</p>
-                <div className="space-y-2">
-                  {makeupDates.map(date => (
-                    <div key={date} className="flex items-center justify-between bg-purple-50 px-3 py-2 rounded-lg">
-                      <span className="text-sm text-purple-800">
-                        {new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                      </span>
-                      <button
-                        onClick={() => removeMakeupDate(date)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-              <input
-                type="date"
-                value={newMakeupDate}
-                onChange={(e) => setNewMakeupDate(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={addMakeupDate}
-                disabled={!newMakeupDate}
-                className="flex-1 bg-purple-500 text-white py-2 rounded-lg font-medium hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add Makeup Date
-              </button>
-              <button
-                onClick={() => { setShowMakeupModal(false); setNewMakeupDate(''); }}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StudentsTab({ data, setData, searchTerm, setSearchTerm, setShowStudentModal, setEditingStudent }) {
-  const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [csvFile, setCsvFile] = useState(null);
-  const [previewData, setPreviewData] = useState([]);
-  
-  const filteredStudents = data.students.filter(s =>
-    s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.studentId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setCsvFile(file);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target.result;
-        const rows = text.split('\n').filter(row => row.trim());
-        const headers = rows[0].split(',').map(h => h.trim());
-        
-        const students = rows.slice(1).map((row, idx) => {
-          const values = row.split(',').map(v => v.trim());
-          return {
-            studentId: values[0] || `GM${1000 + idx}`,
-            fullName: values[1] || '',
-            email: values[2] || '',
-            phone: values[3] || '',
-            status: 'Active'
-          };
-        }).filter(s => s.fullName);
-        
-        setPreviewData(students);
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleBulkImport = () => {
-    const newStudents = previewData.map((s, idx) => ({
-      ...s,
-      id: Date.now() + idx
-    }));
-    
-    setData(prev => ({
-      ...prev,
-      students: [...prev.students, ...newStudents]
-    }));
-    
-    setShowBulkUpload(false);
-    setCsvFile(null);
-    setPreviewData([]);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Students</h2>
-        <div className="flex gap-2">
-          <button onClick={() => setShowBulkUpload(true)} className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
-            <Upload className="w-4 h-4" />
-            Bulk Upload CSV
-          </button>
-          <button onClick={() => { setShowStudentModal(true); setEditingStudent(null); }} className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-blue-700">
-            <Plus className="w-4 h-4" />
-            Add Student
-          </button>
-        </div>
-      </div>
-      
-      {showBulkUpload && (
-        <BulkUploadModal
-          onClose={() => { setShowBulkUpload(false); setCsvFile(null); setPreviewData([]) }}
-          onFileChange={handleFileChange}
-          previewData={previewData}
-          onImport={handleBulkImport}
-        />
-      )}
-
-      <div className="bg-white rounded-xl shadow-md p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Search className="w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name or ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-          />
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Student ID</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Phone</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.map(student => (
-                <tr key={student.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4 text-sm">{student.studentId}</td>
-                  <td className="py-3 px-4 text-sm font-medium">{student.fullName}</td>
-                  <td className="py-3 px-4 text-sm text-gray-600">{student.email}</td>
-                  <td className="py-3 px-4 text-sm text-gray-600">{student.phone || '-'}</td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                      {student.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <button onClick={() => { setEditingStudent(student); setShowStudentModal(true); }} className="text-blue-600 hover:text-blue-800">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ClassesTab({ data, setData, setShowClassModal, setEditingClass }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Classes</h2>
-        <button onClick={() => { setShowClassModal(true); setEditingClass(null); }} className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-blue-700">
-          <Plus className="w-4 h-4" />
-          Create Class
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {data.classes.map(classItem => {
-          const enrolledCount = data.enrollments.filter(e => e.classId === classItem.id).length;
-          return (
-            <div key={classItem.id} className="bg-white rounded-xl shadow-md p-6 border-l-4 border-orange-500">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">{classItem.name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{classItem.description}</p>
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                  {classItem.status}
-                </span>
-              </div>
-              
-              <div className="space-y-2 text-sm text-gray-600 mb-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>{classItem.startDate} to {classItem.endDate}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>{enrolledCount} students enrolled</span>
-                </div>
-              </div>
-
-              <button onClick={() => { setEditingClass(classItem); setShowClassModal(true); }} className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-2 rounded-lg hover:bg-blue-100">
-                <Edit2 className="w-4 h-4" />
-                Edit
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ReportsTab({ data }) {
-  const getStudentStats = (studentId) => {
-    const records = data.attendance.filter(a => a.studentId === studentId);
-    const present = records.filter(r => r.status === 'P').length;
-    return { total: records.length, present, rate: records.length > 0 ? Math.round((present / records.length) * 100) : 0 };
-  };
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800">Attendance Reports</h2>
-
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Student Attendance Summary</h3>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Student</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Total Sessions</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Present</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.students.filter(s => s.status === 'Active').map(student => {
-                const stats = getStudentStats(student.id);
-                return (
-                  <tr key={student.id} className="border-b border-gray-100">
-                    <td className="py-3 px-4 text-sm font-medium">{student.fullName}</td>
-                    <td className="py-3 px-4 text-sm">{stats.total}</td>
-                    <td className="py-3 px-4 text-sm">{stats.present}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-xs">
-                          <div
-                            className={`h-2 rounded-full ${stats.rate >= 90 ? 'bg-green-500' : stats.rate >= 75 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                            style={{ width: `${stats.rate}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{stats.rate}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StudentModal({ student, onClose, onSave }) {
-  const [formData, setFormData] = useState(student || { studentId: '', fullName: '', email: '', phone: '', status: 'Active' });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">{student ? 'Edit Student' : 'Add New Student'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Student ID *</label>
-            <input
-              type="text"
-              value={formData.studentId}
-              onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-            <input
-              type="text"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-          <div className="flex gap-2 pt-4">
-            <button type="submit" className="flex-1 bg-gradient-to-r from-orange-500 to-blue-600 text-white py-2 rounded-lg font-medium hover:from-orange-600 hover:to-blue-700">
-              Save
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function ClassModal({ classData, onClose, onSave }) {
-  const [formData, setFormData] = useState(classData || { name: '', description: '', startDate: '', endDate: '', maxCapacity: '', status: 'Active' });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">{classData ? 'Edit Class' : 'Create New Class'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-              rows="2"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                required
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Max Capacity</label>
-            <input
-              type="number"
-              value={formData.maxCapacity}
-              onChange={(e) => setFormData({ ...formData, maxCapacity: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-          <div className="flex gap-2 pt-4">
-            <button type="submit" className="flex-1 bg-gradient-to-r from-orange-500 to-blue-600 text-white py-2 rounded-lg font-medium hover:from-orange-600 hover:to-blue-700">
-              Save
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500
