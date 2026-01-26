@@ -11,6 +11,7 @@ import {
   saveAttendance,
   deleteAttendance 
 } from './databaseFunctions';
+import { initializeFirebaseData } from './initializeFirebase';
 
 //replaced state functions
 
