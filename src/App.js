@@ -695,4 +695,584 @@ contactus@gearmindsacademy.com
                     const emails = selectedSuggestions.map(s => s.student.email).join(',');
                     window.location.href = `mailto:${emails}?subject=Makeup Class Opportunity - GearMinds Academy&body=${encodeURIComponent(generatedEmail)}`;
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-blue-600 text-white py-2 rounded-lg hover:from-orange-600 hover:to-blue-700"
+                >
+                  Send Email
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>Generate an email to send makeup class notifications</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+function Header({ user, onLogout }) {
+  return (
+    <header className="bg-white shadow-sm border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <div className="bg-gradient-to-r from-orange-500 to-blue-600 text-white text-xl font-bold py-2 px-4 rounded-lg">
+            GearMinds
+          </div>
+          <span className="text-gray-600">Student Attendance System</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-700">Welcome, {user.email}</span>
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Navigation({ activeTab, setActiveTab }) {
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'students', label: 'Students', icon: Users },
+    { id: 'classes', label: 'Classes', icon: BookOpen },
+    { id: 'attendance', label: 'Attendance', icon: Calendar },
+    { id: 'makeup', label: 'Makeup Classes', icon: Sparkles },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
+  ];
+
+  return (
+    <nav className="bg-white rounded-xl shadow-sm p-2 mb-6">
+      <div className="flex flex-wrap gap-2">
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-gradient-to-r from-orange-500 to-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+
+function Dashboard({ data, setActiveTab, setShowStudentModal, setShowClassModal, setEditingStudent, setEditingClass }) {
+  const totalStudents = data.students.length;
+  const totalClasses = data.classes.length;
+  const totalAttendance = data.attendance.length;
+  const presentCount = data.attendance.filter(a => a.status === 'P').length;
+  const absentCount = data.attendance.filter(a => a.status === 'A').length;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-md p-6 text-center">
+          <Users className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-gray-800">{totalStudents}</div>
+          <div className="text-sm text-gray-600">Total Students</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-md p-6 text-center">
+          <BookOpen className="w-8 h-8 text-green-500 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-gray-800">{totalClasses}</div>
+          <div className="text-sm text-gray-600">Total Classes</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-md p-6 text-center">
+          <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-gray-800">{presentCount}</div>
+          <div className="text-sm text-gray-600">Present Today</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-md p-6 text-center">
+          <Archive className="w-8 h-8 text-red-500 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-gray-800">{absentCount}</div>
+          <div className="text-sm text-gray-600">Absent Today</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowStudentModal(true)}
+              className="w-full flex items-center justify-center gap-2 bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600"
+            >
+              <Plus className="w-5 h-5" />
+              Add New Student
+            </button>
+            <button
+              onClick={() => setShowClassModal(true)}
+              className="w-full flex items-center justify-center gap-2 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600"
+            >
+              <Plus className="w-5 h-5" />
+              Add New Class
+            </button>
+            <button
+              onClick={() => setActiveTab('attendance')}
+              className="w-full flex items-center justify-center gap-2 bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600"
+            >
+              <Calendar className="w-5 h-5" />
+              Take Attendance
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>• System initialized with sample data</p>
+            <p>• Attendance tracking active</p>
+            <p>• Reports available</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentsTab({ data, setData, searchTerm, setSearchTerm, setShowStudentModal, setEditingStudent }) {
+  const filteredStudents = data.students.filter(student =>
+    student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Students</h2>
+        <div className="flex gap-2">
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search students..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <button
+            onClick={() => setShowStudentModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add Student
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredStudents.map(student => (
+              <tr key={student.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.studentId}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.fullName}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.phone}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button
+                    onClick={() => {
+                      setEditingStudent(student);
+                      setShowStudentModal(true);
+                    }}
+                    className="text-indigo-600 hover:text-indigo-900"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ClassesTab({ data, setData, setShowClassModal, setEditingClass }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Classes</h2>
+        <button
+          onClick={() => setShowClassModal(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-orange-600 hover:to-blue-700"
+        >
+          <Plus className="w-4 h-4" />
+          Add Class
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {data.classes.map(classItem => (
+          <div key={classItem.id} className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">{classItem.name}</h3>
+            <p className="text-sm text-gray-600 mb-2">{classItem.description}</p>
+            <p className="text-sm text-gray-500">Start: {new Date(classItem.startDate).toLocaleDateString()}</p>
+            <p className="text-sm text-gray-500">End: {new Date(classItem.endDate).toLocaleDateString()}</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => {
+                  setEditingClass(classItem);
+                  setShowClassModal(true);
+                }}
+                className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AttendanceTab({ data, setData, selectedClass, setSelectedClass, getClassDates }) {
+  const handleAttendanceChange = async (studentId, date, status) => {
+    try {
+      await saveAttendance({
+        studentId,
+        classId: selectedClass,
+        date,
+        status
+      });
+      
+      // Update local state
+      const existing = data.attendance.find(a => a.studentId === studentId && a.classId === selectedClass && a.date === date);
+      if (existing) {
+        setData(prev => ({
+          ...prev,
+          attendance: prev.attendance.map(a => a.id === existing.id ? { ...a, status } : a)
+        }));
+      } else {
+        // Reload data for new records
+        const allData = await loadAllData();
+        setData(allData);
+      }
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      alert('Failed to save attendance. Please try again.');
+    }
+  };
+
+  const enrolledStudents = selectedClass ? data.enrollments
+    .filter(e => e.classId === selectedClass)
+    .map(e => data.students.find(s => s.id === e.studentId))
+    .filter(s => s) : [];
+
+  const classDates = selectedClass ? getClassDates(data.classes.find(c => c.id === selectedClass)) : [];
+
+  const getStatus = (studentId, date) => {
+    const record = data.attendance.find(a => a.studentId === studentId && a.classId === selectedClass && a.date === date);
+    return record ? record.status : '';
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Attendance</h2>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+          <select
+            value={selectedClass || ''}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          >
+            <option value="">Select a class</option>
+            {data.classes.map(classItem => (
+              <option key={classItem.id} value={classItem.id}>{classItem.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {selectedClass && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left border border-gray-300">Student</th>
+                  {classDates.map(date => (
+                    <th key={date} className="px-4 py-2 text-center border border-gray-300 min-w-[100px]">
+                      {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {enrolledStudents.map(student => (
+                  <tr key={student.id} className="border-t border-gray-100">
+                    <td className="px-4 py-2 font-medium border border-gray-300">{student.fullName}</td>
+                    {classDates.map(date => (
+                      <td key={date} className="px-4 py-2 text-center border border-gray-300">
+                        <select
+                          value={getStatus(student.id, date)}
+                          onChange={(e) => handleAttendanceChange(student.id, date, e.target.value)}
+                          className="px-2 py-1 border border-gray-300 rounded text-xs"
+                        >
+                          <option value=""></option>
+                          <option value="P">P</option>
+                          <option value="A">A</option>
+                          <option value="E">E</option>
+                          <option value="L">L</option>
+                        </select>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReportsTab({ data }) {
+  const attendanceStats = data.attendance.reduce((acc, a) => {
+    if (!acc[a.classId]) acc[a.classId] = { P: 0, A: 0, L: 0 };
+    acc[a.classId][a.status]++;
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold text-gray-800">Reports</h2>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Attendance Summary</h3>
+          <div className="space-y-2">
+            {data.classes.map(classItem => (
+              <div key={classItem.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="font-medium">{classItem.name}</span>
+                <div className="text-sm text-gray-600">
+                  P: {attendanceStats[classItem.id]?.P || 0} | A: {attendanceStats[classItem.id]?.A || 0} | L: {attendanceStats[classItem.id]?.L || 0}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Student Statistics</h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {data.students.map(student => {
+              const studentAttendance = data.attendance.filter(a => a.studentId === student.id);
+              const present = studentAttendance.filter(a => a.status === 'P').length;
+              const total = studentAttendance.length;
+              const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+              return (
+                <div key={student.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="font-medium">{student.fullName}</span>
+                  <span className="text-sm text-gray-600">{percentage}% ({present}/{total})</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentModal({ student, onClose, onSave }) {
+  const [formData, setFormData] = useState({
+    studentId: '',
+    fullName: '',
+    email: '',
+    phone: ''
+  });
+
+  useEffect(() => {
+    if (student) {
+      setFormData(student);
+    } else {
+      setFormData({ studentId: '', fullName: '', email: '', phone: '' });
+    }
+  }, [student]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">{student ? 'Edit Student' : 'Add Student'}</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Student ID</label>
+            <input
+              type="text"
+              value={formData.studentId}
+              onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+            <input
+              type="text"
+              value={formData.fullName}
+              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+            <input
+              type="text"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-orange-500 to-blue-600 text-white py-2 rounded-lg hover:from-orange-600 hover:to-blue-700"
+            >
+              {student ? 'Update' : 'Add'} Student
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ClassModal({ classData, onClose, onSave }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    startDate: '',
+    endDate: ''
+  });
+
+  useEffect(() => {
+    if (classData) {
+      setFormData(classData);
+    } else {
+      setFormData({ name: '', description: '', startDate: '', endDate: '' });
+    }
+  }, [classData]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">{classData ? 'Edit Class' : 'Add Class'}</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Class Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              rows="3"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+            <input
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+            <input
+              type="date"
+              value={formData.endDate}
+              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-orange-500 to-blue-600 text-white py-2 rounded-lg hover:from-orange-600 hover:to-blue-700"
+            >
+              {classData ? 'Update' : 'Add'} Class
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
