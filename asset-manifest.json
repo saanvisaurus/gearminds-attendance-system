@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/gearminds-attendance-system/static/css/main.1c9b27eb.css",
+    "main.js": "/gearminds-attendance-system/static/js/main.7c82c62d.js",
+    "index.html": "/gearminds-attendance-system/index.html",
+    "main.1c9b27eb.css.map": "/gearminds-attendance-system/static/css/main.1c9b27eb.css.map",
+    "main.7c82c62d.js.map": "/gearminds-attendance-system/static/js/main.7c82c62d.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1c9b27eb.css",
+    "static/js/main.7c82c62d.js"
+  ]
+}
