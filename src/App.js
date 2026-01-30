@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Archive, CheckCircle, Upload, Mail, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Archive, CheckCircle, Mail, Sparkles } from 'lucide-react';
 
 // Firebase imports
 import { 
@@ -8,8 +8,7 @@ import {
   updateStudent,
   addClass,
   updateClass,
-  saveAttendance,
-  deleteAttendance 
+  saveAttendance
 } from './databaseFunctions';
 import { initializeFirebaseData } from './initializeFirebase';
 
@@ -68,22 +67,22 @@ export default function GearMindsAttendance() {
   // Get dates for the selected class (weekly from start to end)
   const getClassDates = (classItem) => {
     if (!classItem) return [];
-    const dates = [];
+    const classDates = [];
     const start = new Date(classItem.startDate);
     const end = new Date(classItem.endDate);
     const current = new Date(start);
     
     // Generate weekly dates
     while (current <= end) {
-      dates.push(current.toISOString().split('T')[0]);
+      classDates.push(current.toISOString().split('T')[0]);
       current.setDate(current.getDate() + 7);
     }
     
-    return dates.slice(0, 18); // Limit to 18 weeks
+    return classDates.slice(0, 18); // Limit to 18 weeks
   };
 
   // AI Makeup class suggestions
-  const getMakeupSuggestions = () => {
+  const getMakeupSuggestions = useCallback(() => {
     const suggestions = [];
     
     data.classes.forEach(classItem => {
@@ -92,7 +91,7 @@ export default function GearMindsAttendance() {
         .map(e => data.students.find(s => s.id === e.studentId))
         .filter(s => s);
       
-      const dates = getClassDates(classItem);
+      const classDates = getClassDates(classItem);
       
       enrolledStudents.forEach(student => {
         const attendanceRecords = data.attendance.filter(a => 
@@ -116,7 +115,7 @@ export default function GearMindsAttendance() {
     });
     
     return suggestions.sort((a, b) => b.totalAbsences - a.totalAbsences);
-  };
+  }, [data.classes, data.enrollments, data.students, data.attendance]);
 
   // Show loading screen while fetching data
   if (loading) {
@@ -336,71 +335,6 @@ function LoginForm({ onLogin }) {
   );
 }
 
-function BulkUploadModal({ onClose, onFileChange, previewData, onImport }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Bulk Upload Students (CSV)</h3>
-        
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800 mb-2"><strong>CSV Format:</strong></p>
-          <code className="text-xs text-blue-900 block">Student ID, Full Name, Email, Phone</code>
-          <p className="text-xs text-blue-700 mt-2">Example: GM001, John Doe, john@example.com, 555-0100</p>
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Upload CSV File</label>
-          <input
-            type="file"
-            accept=".csv"
-            onChange={onFileChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-          />
-        </div>
-        
-        {previewData.length > 0 && (
-          <div className="mb-4">
-            <h4 className="font-semibold text-gray-800 mb-2">Preview ({previewData.length} students)</h4>
-            <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Student ID</th>
-                    <th className="px-3 py-2 text-left">Name</th>
-                    <th className="px-3 py-2 text-left">Email</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewData.map((s, idx) => (
-                    <tr key={idx} className="border-t border-gray-100">
-                      <td className="px-3 py-2">{s.studentId}</td>
-                      <td className="px-3 py-2">{s.fullName}</td>
-                      <td className="px-3 py-2">{s.email}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex gap-2">
-          <button
-            onClick={onImport}
-            disabled={previewData.length === 0}
-            className="flex-1 bg-gradient-to-r from-orange-500 to-blue-600 text-white py-2 rounded-lg font-medium hover:from-orange-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Import {previewData.length} Students
-          </button>
-          <button onClick={onClose} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MakeupClassesTab({ data, getMakeupSuggestions }) {
   const [suggestions, setSuggestions] = useState([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState([]);
@@ -416,7 +350,7 @@ function MakeupClassesTab({ data, getMakeupSuggestions }) {
 
   useEffect(() => {
     setSuggestions(getMakeupSuggestions());
-  }, [data.attendance]);
+  }, [data.attendance, getMakeupSuggestions]);
 
   const toggleSelection = (suggestion) => {
     setSelectedSuggestions(prev => {
@@ -483,9 +417,6 @@ function MakeupClassesTab({ data, getMakeupSuggestions }) {
     const formattedTimes = formatTimeSlots(timesToUse);
     
     setTimeout(() => {
-      const studentNames = selectedSuggestions.map(s => s.student.fullName).join(', ');
-      const totalAbsences = selectedSuggestions.reduce((sum, s) => sum + s.totalAbsences, 0);
-      
       const email = `Subject: Makeup Class Opportunity - GearMinds Academy
 
 Dear Parents and Students,
@@ -772,10 +703,9 @@ function Navigation({ activeTab, setActiveTab }) {
 }
 
 
-function Dashboard({ data, setActiveTab, setShowStudentModal, setShowClassModal, setEditingStudent, setEditingClass }) {
+function Dashboard({ data, setActiveTab, setShowStudentModal, setShowClassModal }) {
   const totalStudents = data.students.length;
   const totalClasses = data.classes.length;
-  const totalAttendance = data.attendance.length;
   const presentCount = data.attendance.filter(a => a.status === 'P').length;
   const absentCount = data.attendance.filter(a => a.status === 'A').length;
 
@@ -914,7 +844,7 @@ function StudentsTab({ data, setData, searchTerm, setSearchTerm, setShowStudentM
   );
 }
 
-function ClassesTab({ data, setData, setShowClassModal, setEditingClass }) {
+function ClassesTab({ data, setShowClassModal, setEditingClass }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
