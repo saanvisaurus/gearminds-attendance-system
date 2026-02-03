@@ -3,11 +3,19 @@ import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Arch
 
 import { HashRouter } from "react-router-dom";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <HashRouter>
-    <App />
-  </HashRouter>
-);
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Home from "./Home";
+import Login from "./Login";
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
+    </Routes>
+  );
+}
 
 // Firebase imports
 import { 
