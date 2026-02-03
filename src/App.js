@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Archive, CheckCircle, Mail, Sparkles } from 'lucide-react';
 
+import { HashRouter } from "react-router-dom";
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <HashRouter>
+    <App />
+  </HashRouter>
+);
+
 // Firebase imports
 import { 
   loadAllData, 
