@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/gearminds-attendance-system/static/css/main.1c9b27eb.css",
-    "main.js": "/gearminds-attendance-system/static/js/main.0408e05c.js",
+    "main.js": "/gearminds-attendance-system/static/js/main.56e14e7e.js",
     "index.html": "/gearminds-attendance-system/index.html",
     "main.1c9b27eb.css.map": "/gearminds-attendance-system/static/css/main.1c9b27eb.css.map",
-    "main.0408e05c.js.map": "/gearminds-attendance-system/static/js/main.0408e05c.js.map"
+    "main.56e14e7e.js.map": "/gearminds-attendance-system/static/js/main.56e14e7e.js.map"
   },
   "entrypoints": [
     "static/css/main.1c9b27eb.css",
-    "static/js/main.0408e05c.js"
+    "static/js/main.56e14e7e.js"
   ]
 }
