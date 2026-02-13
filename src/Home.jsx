@@ -14,20 +14,6 @@ import {
 import { initializeFirebaseData } from './initializeFirebase';
 
 export default function GearMindsAttendance() {
-  // ... rest of your code
-
-// Firebase imports
-import { 
-  loadAllData, 
-  addStudent, 
-  updateStudent,
-  addClass,
-  updateClass,
-  saveAttendance
-} from './databaseFunctions';
-import { initializeFirebaseData } from './initializeFirebase';
-
-export default function GearMindsAttendance() {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState({
