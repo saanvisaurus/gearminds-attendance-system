@@ -1,3 +1,21 @@
+//function imports
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Archive, CheckCircle, Mail, Sparkles } from 'lucide-react';
+
+// Firebase imports
+import { 
+  loadAllData, 
+  addStudent, 
+  updateStudent,
+  addClass,
+  updateClass,
+  saveAttendance
+} from './databaseFunctions';
+import { initializeFirebaseData } from './initializeFirebase';
+
+export default function GearMindsAttendance() {
+  // ... rest of your code
+
 // Firebase imports
 import { 
   loadAllData, 
