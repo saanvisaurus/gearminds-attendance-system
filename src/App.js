@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Users, BookOpen, BarChart3, LogOut, Search, Plus, Edit2, Archive, CheckCircle, Mail, Sparkles } from 'lucide-react';
 
-import { HashRouter } from "react-router-dom";
-
-import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Home from "./Home";
 import Login from "./Login";
